@@ -1,0 +1,66 @@
+<plugin>
+
+<script name="hq-nginx-stat">
+<![CDATA[
+#!/usr/bin/python
+
+import httplib
+
+conn = httplib.HTTPConnection("127.0.0.1")
+try:
+    conn.request("GET", "/nginx_status")
+    resp = conn.getresponse()
+    data = resp.read().strip()
+
+    lines = data.split('\n')
+    connections = lines[0].split(':')[1].strip()
+    print 'Connections=%s' % connections
+
+    accepts, handled, requests = lines[2].strip().split(' ')
+    print 'Accepts=%s' % accepts
+    print 'Handled=%s' % handled
+    print 'Requests=%s' % requests
+
+    stats = lines[3].split(' ')
+    print 'Reading=%s' % stats[1]
+    print 'Writing=%s' % stats[3]
+    print 'Waiting=%s' % stats[5]
+    
+finally:
+    conn.close()
+]]>
+</script>
+
+<server name="nginx">
+
+<config>
+<option name="process.query" description="Process Query" default="Pid.PidFile.eq=/var/run/nginx.pid"/>
+</config>
+
+<property name="HAS_BUILTIN_SERVICES" value="false"/>
+<property name="PROC_QUERY" value="Pid.PidFile.eq=/var/run/nginx.pid"/>
+<plugin type="autoinventory" class="org.hyperic.hq.product.DaemonDetector"/>
+<plugin type="measurement" class="org.hyperic.hq.product.MeasurementPlugin"/>
+
+<metric name="Availability" alias="Availability" template="sigar:Type=ProcState,Arg=%process.query%:State"
+category="AVAILABILITY" indicator="true"/>
+
+<filter name="template" value="exec:timeout=10,file=pdk/work/scripts/nginx/hq-nginx-stat,exec=%exec%:${alias}"/>
+
+<metric name="Connections" indicator="true"/>
+<metric name="Accepts" indicator="true"/>
+<metric name="Handled" indicator="true"/>
+<metric name="Requests" indicator="true"/>
+<metric name="Writing" indicator="true"/>
+<metric name="Waiting" indicator="true"/>
+
+
+</server>
+
+<!--
+ ==================== Plugin Help ===========================
+-->
+<help name="nginx">
+Nginx Plugin
+</help>
+</plugin>
