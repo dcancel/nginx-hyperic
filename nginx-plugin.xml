@@ -5,10 +5,13 @@
 #!/usr/bin/python
 
 import httplib
+import sys
 
-conn = httplib.HTTPConnection("127.0.0.1")
+port, host = sys.argv[1].split()
+conn = httplib.HTTPConnection("127.0.0.1", int(port))
+
 try:
-    conn.request("GET", "/nginx_status")
+    conn.request("GET", "/nginx_status", headers={'Host':host})
     resp = conn.getresponse()
     data = resp.read().strip()
 
@@ -34,18 +37,20 @@ finally:
 <server name="nginx">
 
 <config>
+<option name="host" description="Host" default="localhost"/>
+<option name="port" description="Port" default="80"/>
 <option name="process.query" description="Process Query" default="Pid.PidFile.eq=/var/run/nginx.pid"/>
 </config>
 
 <property name="HAS_BUILTIN_SERVICES" value="false"/>
-<property name="PROC_QUERY" value="Pid.PidFile.eq=/var/run/nginx.pid"/>
+<property name="PROC_QUERY" value="%process.query%"/>
 <plugin type="autoinventory" class="org.hyperic.hq.product.DaemonDetector"/>
 <plugin type="measurement" class="org.hyperic.hq.product.MeasurementPlugin"/>
 
 <metric name="Availability" alias="Availability" template="sigar:Type=ProcState,Arg=%process.query%:State"
 category="AVAILABILITY" indicator="true"/>
 
-<filter name="template" value="exec:timeout=10,file=pdk/work/scripts/nginx/hq-nginx-stat,exec=%exec%:${alias}"/>
+<filter name="template" value="exec:timeout=10,file=pdk/work/scripts/nginx/hq-nginx-stat,exec=%exec%,args='%port% %host%':${alias}"/>
 
 <metric name="Connections" indicator="true"/>
 <metric name="Accepts" indicator="true"/>
